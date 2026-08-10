@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink antialiased;
+    font-family: theme('fontFamily.sans');
+    /* Comfortable on a phone in a lap, readable for older eyes. */
+    font-size: 17px;
+    line-height: 1.55;
+    min-height: 100dvh;
+  }
+
+  /* A visible, high-contrast focus ring everywhere, never removed. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-teal-600 ring-offset-2 ring-offset-canvas;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-semibold tracking-tight text-balance;
+  }
+
+  /* Respect the reader's motion preference: no exceptions. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-card border border-line bg-surface shadow-card;
+  }
+
+  /* Every interactive control clears the 44px touch target minimum. */
+  .btn {
+    @apply inline-flex min-h-touch items-center justify-center gap-2 rounded-xl px-4 py-2.5
+      text-base font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-teal-600 text-white hover:bg-teal-700 disabled:hover:bg-teal-600;
+  }
+
+  .btn-secondary {
+    @apply btn border border-line bg-surface text-ink hover:bg-teal-50 disabled:hover:bg-surface;
+  }
+
+  .btn-quiet {
+    @apply btn text-ink-soft hover:bg-black/5 hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply btn border border-coral-500 text-coral-700 hover:bg-coral-50;
+  }
+
+  .btn-sm {
+    @apply min-h-[2.25rem] px-3 py-1.5 text-sm;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base
+      placeholder:text-ink-faint focus:border-teal-600;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-ink;
+  }
+
+  .help {
+    @apply mt-1 text-sm text-ink-soft;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .sr-only-focusable:not(:focus):not(:focus-within) {
+    @apply sr-only;
+  }
+
+  .stack {
+    @apply mx-auto w-full max-w-2xl px-4 py-6 sm:px-6 sm:py-10;
+  }
+
+  .stack-wide {
+    @apply mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-10;
+  }
+}
+
+/* dnd-kit sets this while an item is being dragged. */
+.dragging {
+  @apply z-10 opacity-90 shadow-lg;
+}
