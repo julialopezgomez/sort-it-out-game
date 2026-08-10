@@ -13,7 +13,8 @@ The production architecture is deliberately small and free to operate:
 
 ## Local development
 
-Requirements: Node.js 22, pnpm 9, and a Supabase project or local Supabase CLI installation.
+Requirements: Node.js 22, pnpm 9, and a Supabase project. The Supabase CLI is optional because
+production migrations can be deployed through Supabase's GitHub integration.
 
 ```bash
 pnpm install
@@ -42,8 +43,8 @@ https://julialopezgomez.github.io/sort-it-out-game/
 ```
 
 It is independent of the owner site at `https://julialopezgomez.github.io/`. Read the
-[deployment guide](docs/DEPLOYMENT.md) for the Supabase setup, repository variables, and
-GitHub Pages switch.
+[deployment guide](docs/DEPLOYMENT.md) for the exact Supabase project choices, the recommended
+no-CLI GitHub integration, repository variables, first push, and GitHub Pages switch.
 
 ## Free-tier maintenance
 
