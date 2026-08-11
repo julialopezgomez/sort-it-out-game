@@ -3,7 +3,7 @@
 --
 -- Source:    supabase/seed/factory_cards.json
 -- Regenerate: pnpm seed:factory
--- Cards:     400
+-- Cards:     399
 --
 -- Every factory card is original to this project and carries both an English and a
 -- Spanish rendering of the same canonical concept.
@@ -14,7 +14,7 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-sparkling-water', 'Sparkling water', 'Agua con gas'),
   ('f-pickles', 'Pickles', 'Pepinillos'),
   ('f-candy', 'Candy', 'Golosinas'),
-  ('f-pineapple-on-pizza', 'Pineapple on pizza', 'Piña en la pizza'),
+  ('f-pineapple-on-pizza', 'Pineapple on pizza', 'Pizza con piña'),
   ('f-olives', 'Olives', 'Aceitunas'),
   ('f-sushi', 'Sushi', 'Sushi'),
   ('f-spicy-food', 'Spicy food', 'Comida picante'),
@@ -45,7 +45,7 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-ketchup', 'Ketchup', 'Kétchup'),
   ('f-mayonnaise', 'Mayonnaise', 'Mayonesa'),
   ('f-garlic', 'Garlic', 'Ajo'),
-  ('f-cilantro', 'Cilantro', 'Cilantro'),
+  ('f-coriander', 'Coriander', 'Cilantro'),
   ('f-hot-sauce', 'Hot sauce', 'Salsa picante'),
   ('f-oat-milk', 'Oat milk', 'Leche de avena'),
   ('f-coconut', 'Coconut', 'Coco'),
@@ -249,7 +249,6 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-emojis', 'Emojis', 'Emojis'),
   ('f-selfies', 'Selfies', 'Selfis'),
   ('f-photo-filters', 'Photo filters', 'Filtros de fotos'),
-  ('f-notifications', 'Notifications', 'Notificaciones'),
   ('f-advertisements', 'Advertisements', 'Anuncios'),
   ('f-passwords', 'Passwords', 'Contraseñas'),
   ('f-cash', 'Cash', 'Dinero en efectivo'),
@@ -262,8 +261,9 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-nostalgia', 'Nostalgia', 'Nostalgia'),
   ('f-silence', 'Silence', 'Silencio'),
   ('f-noise', 'Noise', 'Ruido'),
+  ('f-listening-to-the-radio', 'Listening to the radio', 'Escuchar la radio'),
+  ('f-spotify-playlists', 'Spotify playlists', 'Listas de reproducción de Spotify'),
   ('f-darkness', 'Darkness', 'Oscuridad'),
-  ('f-bright-lights', 'Bright lights', 'Luces brillantes'),
   ('f-cold-weather', 'Cold weather', 'El frío'),
   ('f-hot-weather', 'Hot weather', 'El calor'),
   ('f-mornings', 'Mornings', 'Mañanas'),
@@ -341,7 +341,6 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-family-holidays', 'Family holidays', 'Vacaciones familiares'),
   ('f-office-meetings', 'Office meetings', 'Reuniones de trabajo'),
   ('f-job-interviews', 'Job interviews', 'Entrevistas de trabajo'),
-  ('f-unread-emails', 'Unread emails', 'Emails sin leer'),
   ('f-group-projects', 'Group projects', 'Proyectos en grupo'),
   ('f-deadlines', 'Deadlines', 'Fechas límite'),
   ('f-to-do-lists', 'To-do lists', 'Listas de tareas'),
