@@ -21,18 +21,29 @@ export function Dialog({
   const { t } = useTranslation();
   const panel = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  // Call the latest close handler without making focus management depend on the
+  // callback's identity. Callers commonly create this function inline, and rerunning
+  // the effect for every render would briefly restore focus outside the dialog.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
 
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     const node = panel.current;
-    node?.querySelector<HTMLElement>('[data-autofocus], button, input, select, textarea')?.focus();
+    const initialFocus =
+      node?.querySelector<HTMLElement>('[data-autofocus]') ??
+      node?.querySelector<HTMLElement>('button, input, select, textarea');
+    initialFocus?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !node) return;
@@ -60,7 +71,7 @@ export function Dialog({
       document.removeEventListener('keydown', onKeyDown);
       previouslyFocused.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
