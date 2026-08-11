@@ -70,4 +70,66 @@ describe('guesser reveal comparison', () => {
     expect(screen.getByRole('columnheader', { name: 'Posición de Julia' })).toBeVisible();
     expect(screen.queryByText(/\{\{name\}\}/)).not.toBeInTheDocument();
   });
+
+  it('does not show the Ranker-only breakdown', () => {
+    render(<RevealView state={state} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.queryByText('Cómo ha adivinado cada persona')).not.toBeInTheDocument();
+  });
+});
+
+const rankerState = {
+  ...state,
+  me: { ...state.me, playerId: 'ranker' },
+  turn: { iAmRanker: true, skipped: false },
+  reveal: {
+    ...state.reveal,
+    myComparison: null,
+    mySubmitted: false,
+    rankerBreakdown: [
+      {
+        canonicalId: 'f-tofu',
+        text: 'Tofu',
+        position: 1,
+        guesses: [
+          { playerId: 'ana', displayName: 'Ana', position: 1, correct: true, submitted: true },
+          { playerId: 'ben', displayName: 'Ben', position: 3, correct: false, submitted: true },
+        ],
+      },
+      {
+        canonicalId: 'f-cats',
+        text: 'Gatos',
+        position: 2,
+        guesses: [
+          { playerId: 'ana', displayName: 'Ana', position: 2, correct: true, submitted: true },
+          { playerId: 'ben', displayName: 'Ben', position: null, correct: false, submitted: false },
+        ],
+      },
+    ],
+  },
+} as unknown as GameStateView;
+
+describe('ranker guess breakdown', () => {
+  it('shows one column per guesser and one row per card, in the Ranker’s order', () => {
+    render(<RevealView state={rankerState} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.getByRole('columnheader', { name: 'Ana' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: 'Ben' })).toBeVisible();
+    // Each concept appears twice: once in the Ranker's order list, once as a breakdown row.
+    expect(screen.getAllByText('Tofu')).toHaveLength(2);
+    expect(screen.getAllByText('Gatos')).toHaveLength(2);
+  });
+
+  it('marks a correct guess and an incorrect guess with text, not colour alone', () => {
+    render(<RevealView state={rankerState} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.getAllByText('✓').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('✕').length).toBeGreaterThan(0);
+  });
+
+  it('shows a non-submitter as having no answer, not a wrong guess', () => {
+    render(<RevealView state={rankerState} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.getByText('Sin respuesta')).toBeVisible();
+  });
 });

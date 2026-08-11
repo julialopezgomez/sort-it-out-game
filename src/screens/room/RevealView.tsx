@@ -10,6 +10,7 @@ import type { RoomViewProps } from './shared';
 import { useState } from 'react';
 import type { GameError } from '../../lib/errors';
 import { ErrorBanner } from '../../components/Feedback';
+import type { BreakdownRow } from '../../lib/schemas';
 
 /**
  * The reveal.
@@ -90,6 +91,10 @@ export function RevealView({ state, roomCode, refresh, offset }: RoomViewProps) 
               <p className="help">{t('reveal.rankerViewBody')}</p>
               <PerPlayerTable perPlayer={reveal.perPlayer} />
             </section>
+          )}
+
+          {state.turn?.iAmRanker && reveal.rankerBreakdown && (
+            <BreakdownTable rows={reveal.rankerBreakdown} />
           )}
         </>
       )}
@@ -255,5 +260,69 @@ function PerPlayerTable({
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The Ranker's view of every guess: one row per card, in the Ranker's own order, with one
+ * column per guesser. The concept and the Ranker's position stay pinned on the left while
+ * the guesser columns scroll, since a room can have up to 29 guessers.
+ */
+function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
+  const { t } = useTranslation();
+  const guessers = rows[0]?.guesses ?? [];
+
+  return (
+    <section className="card overflow-hidden p-4">
+      <h2 className="text-lg">{t('reveal.allGuessesTitle')}</h2>
+
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wide text-ink-faint">
+              <th scope="col" className="sticky left-0 z-10 bg-surface py-1.5 pr-2 font-medium">
+                {t('reveal.concept')}
+              </th>
+              <th scope="col" className="px-2 py-1.5 text-center font-medium">
+                {t('reveal.yourRank')}
+              </th>
+              {guessers.map((guesser) => (
+                <th
+                  key={guesser.playerId}
+                  scope="col"
+                  className="whitespace-nowrap px-3 py-1.5 text-center font-medium"
+                >
+                  {guesser.displayName}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {rows.map((row) => (
+              <tr key={row.canonicalId}>
+                <td className="sticky left-0 z-10 bg-surface py-2 pr-2 break-words">{row.text}</td>
+                <td className="px-2 py-2 text-center tabular-nums">{row.position}</td>
+                {row.guesses.map((guess) => (
+                  <td key={guess.playerId} className="px-3 py-2 text-center">
+                    {!guess.submitted ? (
+                      <span className="chip bg-line text-ink-soft">{t('reveal.noAnswer')}</span>
+                    ) : (
+                      <span
+                        className={`chip ${
+                          guess.correct ? 'bg-teal-50 text-teal-700' : 'bg-coral-50 text-coral-700'
+                        }`}
+                      >
+                        <span aria-hidden="true">{guess.correct ? '✓' : '✕'}</span>
+                        {guess.position}
+                      </span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

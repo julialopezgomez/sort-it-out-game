@@ -1057,6 +1057,131 @@ begin
   raise notice 'TEST P passed — anon has no direct table access except room_events';
 end $$;
 
+-- ===========================================================================
+-- TEST Q — the Ranker's reveal breakdown shows every guesser's per-card guess;
+--          a Guesser gets none of it
+-- ===========================================================================
+delete from public.rate_limits;
+
+do $$
+declare
+  v_code text;
+  v_tok text;
+  v_order text[];
+  v_rotated text[];
+  v_other1 text;
+  v_other2 text;
+  v_state jsonb;
+  v_breakdown jsonb;
+  v_first_card jsonb;
+  v_guesses jsonb;
+begin
+  v_code := (public.create_room('t-alice', 'Alice', 'en', '{"totalCycles":1}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_code, 't-bob', 'Bob', 'en');
+  perform public.join_room(v_code, 't-carol', 'Carol', 'en');
+  perform public.start_game(v_code, 't-alice');
+
+  v_tok := pg_temp.ranker_token(v_code);
+  perform public.accept_cards(v_code, v_tok);
+  v_order := pg_temp.turn_order(v_code);
+  perform public.submit_ranking(v_code, v_tok, v_order);
+  v_rotated := pg_temp.rotated(v_order);
+
+  select 't-' || lower(display_name) into v_other1
+  from public.players
+  where game_id = (select id from public.games where room_code = v_code)
+    and normalized_name <> lower(substring(v_tok from 3))
+  order by rotation_position limit 1;
+  select 't-' || lower(display_name) into v_other2
+  from public.players
+  where game_id = (select id from public.games where room_code = v_code)
+    and normalized_name <> lower(substring(v_tok from 3))
+    and 't-' || lower(display_name) <> v_other1
+  order by rotation_position limit 1;
+
+  -- one guesser matches exactly, the other guesses a cyclic shift (no exact matches)
+  perform public.submit_ranking(v_code, v_other1, v_order);
+  perform public.submit_ranking(v_code, v_other2, v_rotated);
+
+  v_state := public.get_game_state(v_code, v_tok);
+  v_breakdown := v_state -> 'reveal' -> 'rankerBreakdown';
+
+  assert jsonb_array_length(v_breakdown) = 5, 'Q: one breakdown row per card';
+  assert (v_breakdown -> 0 ->> 'position')::int = 1, 'Q: rows are ordered by the Ranker''s position';
+  assert (v_breakdown -> 4 ->> 'position')::int = 5, 'Q: through to position 5';
+
+  v_first_card := v_breakdown -> 0;
+  assert jsonb_array_length(v_first_card -> 'guesses') = 2, 'Q: one guess entry per eligible guesser';
+
+  v_guesses := v_first_card -> 'guesses';
+  assert exists (
+    select 1 from jsonb_array_elements(v_guesses) g
+    where (g ->> 'submitted')::boolean and (g ->> 'correct')::boolean and (g ->> 'position')::int = 1
+  ), 'Q: the exact-match guesser is shown as correct at position 1';
+  assert exists (
+    select 1 from jsonb_array_elements(v_guesses) g
+    where (g ->> 'submitted')::boolean and not (g ->> 'correct')::boolean
+  ), 'Q: the cyclic-shift guesser is shown as incorrect';
+
+  -- a Guesser must never receive this breakdown
+  v_state := public.get_game_state(v_code, v_other1);
+  assert v_state -> 'reveal' -> 'rankerBreakdown' = 'null'::jsonb,
+    'Q: a Guesser must not receive anyone''s per-card guesses';
+
+  raise notice 'TEST Q passed — Ranker-only per-card guess breakdown';
+end $$;
+
+-- ===========================================================================
+-- TEST R — a non-submitter appears in the Ranker's breakdown as not submitted,
+--          never as a wrong guess with a fabricated position
+-- ===========================================================================
+delete from public.rate_limits;
+
+do $$
+declare
+  v_code text;
+  v_tok text;
+  v_order text[];
+  v_g public.games;
+  v_state jsonb;
+  v_first_card jsonb;
+begin
+  v_code := (public.create_room('t-alice', 'Alice', 'en',
+    '{"totalCycles":1,"guesserSeconds":30}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_code, 't-bob', 'Bob', 'en');
+  perform public.join_room(v_code, 't-carol', 'Carol', 'en');
+  perform public.start_game(v_code, 't-alice');
+
+  v_tok := pg_temp.ranker_token(v_code);
+  perform public.accept_cards(v_code, v_tok);
+  v_order := pg_temp.turn_order(v_code);
+  perform public.submit_ranking(v_code, v_tok, v_order);
+
+  -- nobody guesses; the deadline elapses
+  select * into v_g from public.games where room_code = v_code;
+  update public.games set phase_deadline_at = now() - interval '1 second' where id = v_g.id;
+  perform public.advance_game_if_needed(v_code, v_tok);
+
+  v_state := public.get_game_state(v_code, v_tok);
+  v_first_card := v_state -> 'reveal' -> 'rankerBreakdown' -> 0;
+
+  assert jsonb_array_length(v_first_card -> 'guesses') = 2, 'R: both non-submitters appear';
+  assert not exists (
+    select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
+    where (g ->> 'submitted')::boolean
+  ), 'R: nobody submitted, so nobody is marked submitted';
+  assert not exists (
+    select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
+    where g -> 'position' <> 'null'::jsonb
+  ), 'R: a non-submitter never gets a fabricated guessed position';
+  assert not exists (
+    select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
+    where (g ->> 'correct')::boolean
+  ), 'R: a non-submitter is never shown as correct';
+
+  raise notice 'TEST R passed — non-submitters show up honestly in the breakdown';
+end $$;
+
 rollback;
 
 \echo ''

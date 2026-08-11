@@ -98,6 +98,18 @@ export const comparisonRowSchema = cardViewSchema.extend({
   correct: z.boolean(),
 });
 
+export const breakdownGuessSchema = z.object({
+  playerId: z.string(),
+  displayName: z.string(),
+  position: z.number().int().nullable(),
+  correct: z.boolean(),
+  submitted: z.boolean(),
+});
+
+export const breakdownRowSchema = cardViewSchema.extend({
+  guesses: z.array(breakdownGuessSchema),
+});
+
 export const playerViewSchema = z.object({
   playerId: z.string(),
   displayName: z.string(),
@@ -161,6 +173,7 @@ export const revealViewSchema = z.object({
   myAwardedScore: z.number().int().nullable(),
   myPenaltyApplied: z.boolean(),
   mySubmitted: z.boolean(),
+  rankerBreakdown: z.array(breakdownRowSchema).nullable(),
 });
 
 export const summarySchema = z.object({
@@ -299,6 +312,8 @@ export type TurnView = z.infer<typeof turnViewSchema>;
 export type RevealView = z.infer<typeof revealViewSchema>;
 export type CardView = z.infer<typeof cardViewSchema>;
 export type ComparisonRow = z.infer<typeof comparisonRowSchema>;
+export type BreakdownRow = z.infer<typeof breakdownRowSchema>;
+export type BreakdownGuess = z.infer<typeof breakdownGuessSchema>;
 export type GameSummary = z.infer<typeof summarySchema>;
 export type JoinResult = z.infer<typeof joinResultSchema>;
 export type CreateResult = z.infer<typeof createResultSchema>;

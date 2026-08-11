@@ -247,6 +247,8 @@
     "rankerViewTitle": "Nobody had to guess your mind perfectly",
     "rankerViewBody": "Here is how everyone did with your order.",
     "perPlayerTitle": "Points this turn",
+    "allGuessesTitle": "How everyone guessed",
+    "noAnswer": "No answer",
     "skippedTitle": "That turn was skipped",
     "skippedBody": "{{name}} did not play their turn as Ranker, so there is nothing to score.",
     "advanceIn": "Next turn in {{seconds}}s",
