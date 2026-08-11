@@ -71,7 +71,7 @@ The second command should print `.env` if that file exists. Then commit and push
 ```bash
 git add .
 git status --short
-git commit -m "Build Sort It Out game"
+git commit -m "Deploy Sort It Out"
 git push origin main
 ```
 
@@ -139,3 +139,9 @@ domain in **Settings → Pages**. No router changes are needed.
 If the project is paused after inactivity, open its Supabase dashboard and select **Restore**.
 The deployed frontend will start working again when the project is available; it does not need
 to be rebuilt. Keep the migrations in this repository as the recovery source of truth.
+
+## Changing game content after deployment
+
+To add or edit factory cards after the project is live, see [Factory cards](FACTORY_CARDS.md).
+Do not edit migration files that have already run; add a new one instead, then commit and push
+to `main` as usual.

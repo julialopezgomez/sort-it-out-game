@@ -9,12 +9,13 @@ The production architecture is deliberately small and free to operate:
 - Vite, React, TypeScript and Tailwind compile to a static site.
 - GitHub Pages hosts the frontend.
 - Supabase Free provides Postgres, RPCs and Realtime notifications.
-- Players join with a six-character room code and display name—there are no accounts.
+- Players join with a six-character room code and display name. There are no accounts.
 
 ## Local development
 
-Requirements: Node.js 22, pnpm 9, and a Supabase project. The Supabase CLI is optional because
-production migrations can be deployed through Supabase's GitHub integration.
+Requirements: Node.js 22, pnpm 9, and a Supabase project with this repository's migrations
+already applied. Without the migrations, `pnpm dev` runs but every request fails. If you don't
+have a project set up yet, do step 1 of the [deployment guide](docs/DEPLOYMENT.md) first.
 
 ```bash
 pnpm install
@@ -22,8 +23,8 @@ cp .env.example .env
 pnpm dev
 ```
 
-Fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`. Never use a Supabase
-service-role key in this frontend.
+Fill `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` with that project's values. Never
+use a Supabase service-role key in this frontend.
 
 Run the complete frontend release gate with:
 
@@ -55,6 +56,8 @@ restore the project. No code change is needed after a normal restore.
 Completed game data can be removed from the Host's History screen. The database also includes
 `cleanup_old_data(interval)` for an owner-controlled retention policy; no automatic destructive
 schedule is enabled.
+
+To add or edit factory cards, see [Factory cards](docs/FACTORY_CARDS.md).
 
 ## Privacy and security
 
