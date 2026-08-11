@@ -4,35 +4,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Warm off-white canvas, dark charcoal ink, restrained accents.
-        canvas: '#FAF8F4',
-        surface: '#FFFFFF',
+        // Theme-aware RGB channels. The active values live in src/index.css.
+        canvas: 'rgb(var(--color-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
         ink: {
-          DEFAULT: '#26292E',
-          soft: '#4A4F57',
-          faint: '#6E747E',
+          DEFAULT: 'rgb(var(--color-ink) / <alpha-value>)',
+          soft: 'rgb(var(--color-ink-soft) / <alpha-value>)',
+          faint: 'rgb(var(--color-ink-faint) / <alpha-value>)',
         },
-        line: '#E3DED4',
+        line: 'rgb(var(--color-line) / <alpha-value>)',
         teal: {
-          50: '#EAF5F4',
-          400: '#2A9187',
-          600: '#0F766E',
-          700: '#0B5A54',
+          50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+          400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+          600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+          700: 'rgb(var(--color-primary-700) / <alpha-value>)',
         },
         bluish: {
-          50: '#EDF2F8',
-          500: '#4A6E96',
-          700: '#375474',
+          50: 'rgb(var(--color-secondary-50) / <alpha-value>)',
+          500: 'rgb(var(--color-secondary-500) / <alpha-value>)',
+          700: 'rgb(var(--color-secondary-700) / <alpha-value>)',
         },
         coral: {
-          50: '#FDEFEC',
-          500: '#D9614C',
-          700: '#A64430',
+          50: 'rgb(var(--color-danger-50) / <alpha-value>)',
+          500: 'rgb(var(--color-danger-500) / <alpha-value>)',
+          700: 'rgb(var(--color-danger-700) / <alpha-value>)',
         },
         sunny: {
-          50: '#FFF6E2',
-          500: '#E0A32E',
-          700: '#9C6F14',
+          50: 'rgb(var(--color-warm-50) / <alpha-value>)',
+          500: 'rgb(var(--color-warm-500) / <alpha-value>)',
+          700: 'rgb(var(--color-warm-700) / <alpha-value>)',
         },
       },
       fontFamily: {

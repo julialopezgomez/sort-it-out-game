@@ -402,6 +402,14 @@
     "hostBadge": "Host",
     "youBadge": "This is you"
   },
+  "theme": {
+    "title": "Colour theme",
+    "open": "Choose a colour theme",
+    "classic": "Classic teal",
+    "berry": "Berry",
+    "ocean": "Ocean",
+    "changed": "{{theme}} theme selected."
+  },
   "errors": {
     "title": "Something went wrong",
     "ROOM_NOT_FOUND": "No room with that code.",

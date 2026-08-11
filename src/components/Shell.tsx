@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
 
 /**
  * The page frame: a skip link, a quiet header, and one main landmark.
@@ -36,7 +37,10 @@ export function Shell({
               {t('app.tagline')}
             </span>
           </Link>
-          <LanguageSwitcher onChange={onLanguageChange} />
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeSwitcher />
+            <LanguageSwitcher onChange={onLanguageChange} />
+          </div>
         </div>
       </header>
 

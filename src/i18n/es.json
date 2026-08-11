@@ -402,6 +402,14 @@
     "hostBadge": "Anfitrión",
     "youBadge": "Este eres tú"
   },
+  "theme": {
+    "title": "Tema de color",
+    "open": "Elegir un tema de color",
+    "classic": "Turquesa clásico",
+    "berry": "Frambuesa",
+    "ocean": "Océano",
+    "changed": "Tema {{theme}} seleccionado."
+  },
   "errors": {
     "title": "Algo ha ido mal",
     "ROOM_NOT_FOUND": "No hay ninguna sala con ese código.",

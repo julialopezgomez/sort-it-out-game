@@ -28,6 +28,39 @@ test('language choice is local to the browser and survives navigation', async ({
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
 });
 
+test('colour theme choice is local and survives a reload', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Choose a colour theme' }).click();
+  await page.getByRole('button', { name: 'Berry' }).click();
+
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'berry');
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 247, 250)');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'berry');
+
+  await page.getByRole('button', { name: 'Choose a colour theme' }).click();
+  await page.getByRole('button', { name: 'Ocean' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ocean');
+});
+
+test('theme controls fit on a narrow phone', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto('./');
+
+  await expect(page.getByRole('button', { name: 'Choose a colour theme' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'English' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Español' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Choose a colour theme' }).click();
+  const picker = page.getByRole('group', { name: 'Colour theme' });
+  await expect(picker).toBeVisible();
+  const box = await picker.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.x).toBeGreaterThanOrEqual(0);
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(320);
+});
+
 test('the PWA manifest and every declared icon are published', async ({ request }) => {
   const manifestResponse = await request.get('./manifest.webmanifest');
   expect(manifestResponse.ok()).toBe(true);
