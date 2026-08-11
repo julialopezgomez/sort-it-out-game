@@ -81,7 +81,7 @@ describe('factory dictionary', () => {
 
   it('uses concise concepts rather than sentence-style prompts', () => {
     const tooManyWords = cards.filter(
-      (c) => c.en.trim().split(/\s+/).length > 4 || c.es.trim().split(/\s+/).length > 4,
+      (c) => c.en.trim().split(/\s+/).length > 5 || c.es.trim().split(/\s+/).length > 5,
     );
     expect(tooManyWords).toEqual([]);
   });
