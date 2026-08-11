@@ -58,8 +58,8 @@ describe('bilingual card fallback', () => {
 describe('factory dictionary', () => {
   const cards = factoryCards as { en: string; es: string }[];
 
-  it('ships at least 250 concepts', () => {
-    expect(cards.length).toBeGreaterThanOrEqual(250);
+  it('ships a large concept pool', () => {
+    expect(cards.length).toBeGreaterThanOrEqual(350);
   });
 
   it('gives every factory card both an English and a Spanish version', () => {
@@ -77,6 +77,13 @@ describe('factory dictionary', () => {
   it('keeps every card short enough for the database and the UI', () => {
     const tooLong = cards.filter((c) => c.en.length > 80 || c.es.length > 80);
     expect(tooLong).toEqual([]);
+  });
+
+  it('uses concise concepts rather than sentence-style prompts', () => {
+    const tooManyWords = cards.filter(
+      (c) => c.en.trim().split(/\s+/).length > 4 || c.es.trim().split(/\s+/).length > 4,
+    );
+    expect(tooManyWords).toEqual([]);
   });
 
   it('renders every factory card in both languages without ever falling back', () => {

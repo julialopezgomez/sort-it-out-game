@@ -1,13 +1,14 @@
 -- ============================================================================
--- Sort It Out — factory card dictionary seed (generated file, do not edit by hand)
+-- Replace the original scenario-style factory dictionary with concise concepts.
 --
--- Source:    supabase/seed/factory_cards.json
--- Regenerate: pnpm seed:factory
--- Cards:     400
---
--- Every factory card is original to this project and carries both an English and a
--- Spanish rendering of the same canonical concept.
+-- Existing cards are disabled rather than deleted because completed or in-progress
+-- turns may still reference them. New games draw only from the current 400-card pool.
+-- The canonical source remains supabase/seed/factory_cards.json.
 -- ============================================================================
+
+update public.factory_cards
+set is_enabled = false
+where is_enabled = true;
 
 insert into public.factory_cards (id, text_en, text_es) values
   ('f-tofu', 'Tofu', 'Tofu'),
@@ -412,4 +413,5 @@ insert into public.factory_cards (id, text_en, text_es) values
   ('f-bees', 'Bees', 'Abejas')
 on conflict (id) do update
   set text_en = excluded.text_en,
-      text_es = excluded.text_es;
+      text_es = excluded.text_es,
+      is_enabled = true;
