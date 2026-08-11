@@ -15,9 +15,11 @@ import type { BreakdownRow } from '../../lib/schemas';
 /**
  * The reveal.
  *
- * Everyone sees their own comparison table, the Ranker's true order, both live
- * leaderboards, and the cooperative scoreboard. Correctness is never colour-only: every row
- * also carries a text label ("Right" / "Wrong").
+ * Everyone sees their own comparison table (Guessers) or the per-player scores
+ * (Ranker), the Ranker's true order, the full per-card breakdown once there's more than
+ * one Guesser to make it worth showing, both live leaderboards, and the cooperative
+ * scoreboard. Correctness is never colour-only: every row also carries a text label
+ * ("Right" / "Wrong").
  */
 export function RevealView({ state, roomCode, refresh, offset }: RoomViewProps) {
   const { t } = useTranslation();
@@ -93,9 +95,7 @@ export function RevealView({ state, roomCode, refresh, offset }: RoomViewProps) 
             </section>
           )}
 
-          {state.turn?.iAmRanker && reveal.rankerBreakdown && (
-            <BreakdownTable rows={reveal.rankerBreakdown} />
-          )}
+          {reveal.fullBreakdown && <BreakdownTable rows={reveal.fullBreakdown} />}
         </>
       )}
 
@@ -155,7 +155,10 @@ function ComparisonTable({
   submitted: boolean;
 }) {
   const { t } = useTranslation();
-  const sorted = [...rows].sort((a, b) => a.myPosition - b.myPosition);
+  // Ordered by the Ranker's actual position, not the Guesser's guess, so the rows read
+  // top-to-bottom in the one order everyone can agree was "correct" — a wrong guess then
+  // shows up as a mismatched number in the same row, rather than moving the row around.
+  const sorted = [...rows].sort((a, b) => (a.rankerPosition ?? 0) - (b.rankerPosition ?? 0));
   const correctCount = rows.filter((row) => row.correct).length;
 
   return (
@@ -264,8 +267,10 @@ function PerPlayerTable({
 }
 
 /**
- * The Ranker's view of every guess: one row per card, in the Ranker's own order, with one
- * column per guesser. The concept stays pinned on the left; the Ranker's position and every
+ * Every guess, one row per card in the Ranker's own order, with one column per Guesser.
+ * The Ranker always sees this; a Guesser sees the identical, unfiltered table (their own
+ * column included, same as everyone else's) once there is more than one Guesser to make
+ * it worth showing. The concept stays pinned on the left; the Ranker's position and every
  * guesser column scroll together, since the concepts are already listed in the Ranker's
  * order, so the position column is redundant to pin.
  *

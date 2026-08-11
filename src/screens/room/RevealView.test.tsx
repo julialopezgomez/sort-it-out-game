@@ -33,29 +33,32 @@ const state = {
       { canonicalId: 'f-tofu', text: 'Tofu', position: 1 },
       { canonicalId: 'f-cats', text: 'Gatos', position: 2 },
     ],
+    // Deliberately out of the Ranker's order: this guesser placed the Ranker's #2 card
+    // first and the Ranker's #1 card second, getting both wrong.
     myComparison: [
-      {
-        canonicalId: 'f-tofu',
-        text: 'Tofu',
-        myPosition: 1,
-        rankerPosition: 1,
-        correct: true,
-      },
       {
         canonicalId: 'f-cats',
         text: 'Gatos',
-        myPosition: 2,
+        myPosition: 1,
         rankerPosition: 2,
-        correct: true,
+        correct: false,
+      },
+      {
+        canonicalId: 'f-tofu',
+        text: 'Tofu',
+        myPosition: 2,
+        rankerPosition: 1,
+        correct: false,
       },
     ],
-    myRawScore: 2,
-    myAwardedScore: 2,
+    myRawScore: 0,
+    myAwardedScore: 0,
     myPenaltyApplied: false,
     mySubmitted: true,
-    turnGroupPoints: 2,
+    turnGroupPoints: 0,
     turnGamePoints: 2,
     perPlayer: [],
+    fullBreakdown: null,
   },
 } as unknown as GameStateView;
 
@@ -71,7 +74,17 @@ describe('guesser reveal comparison', () => {
     expect(screen.queryByText(/\{\{name\}\}/)).not.toBeInTheDocument();
   });
 
-  it('does not show the Ranker-only breakdown', () => {
+  it('orders rows by the Ranker’s position, not the Guesser’s own guess', () => {
+    render(<RevealView state={state} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    const rows = screen.getAllByRole('row').filter((row) => row.querySelector('td'));
+    // Tofu is the Ranker's #1, so it must appear first even though this Guesser
+    // guessed it second.
+    expect(rows[0]).toHaveTextContent('Tofu');
+    expect(rows[1]).toHaveTextContent('Gatos');
+  });
+
+  it('does not show the full breakdown when there is only one Guesser', () => {
     render(<RevealView state={state} roomCode="ABCDEF" refresh={vi.fn()} />);
 
     expect(screen.queryByText('Cómo ha adivinado cada persona')).not.toBeInTheDocument();
@@ -86,7 +99,7 @@ const rankerState = {
     ...state.reveal,
     myComparison: null,
     mySubmitted: false,
-    rankerBreakdown: [
+    fullBreakdown: [
       {
         canonicalId: 'f-tofu',
         text: 'Tofu',
@@ -109,7 +122,7 @@ const rankerState = {
   },
 } as unknown as GameStateView;
 
-describe('ranker guess breakdown', () => {
+describe('the full guess breakdown', () => {
   it('shows one column per guesser and one row per card, in the Ranker’s order', () => {
     render(<RevealView state={rankerState} roomCode="ABCDEF" refresh={vi.fn()} />);
 
@@ -140,5 +153,44 @@ describe('ranker guess breakdown', () => {
     // Ana was correct on both cards; Ben was wrong on one and never answered the other.
     expect(screen.getByText('2/5')).toBeVisible();
     expect(screen.getByText('0/5')).toBeVisible();
+  });
+});
+
+const guesserWithFullBreakdown = {
+  ...state,
+  reveal: {
+    ...state.reveal,
+    fullBreakdown: [
+      {
+        canonicalId: 'f-tofu',
+        text: 'Tofu',
+        position: 1,
+        guesses: [
+          // This Guesser's own id — proving their column is not filtered out, unlike
+          // the Ranker's version there is no "self" to exclude here either.
+          { playerId: 'guesser', displayName: 'You', position: 1, correct: true, submitted: true },
+          { playerId: 'ana', displayName: 'Ana', position: 3, correct: false, submitted: true },
+        ],
+      },
+      {
+        canonicalId: 'f-cats',
+        text: 'Gatos',
+        position: 2,
+        guesses: [
+          { playerId: 'guesser', displayName: 'You', position: 2, correct: true, submitted: true },
+          { playerId: 'ana', displayName: 'Ana', position: 2, correct: true, submitted: true },
+        ],
+      },
+    ],
+  },
+} as unknown as GameStateView;
+
+describe('a Guesser with more than one eligible Guesser in the turn', () => {
+  it('sees the same unfiltered breakdown as the Ranker, including their own column', () => {
+    render(<RevealView state={guesserWithFullBreakdown} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.getByText('Cómo ha adivinado cada persona')).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: 'You' })).toBeVisible();
+    expect(screen.getByRole('columnheader', { name: 'Ana' })).toBeVisible();
   });
 });

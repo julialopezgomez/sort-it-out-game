@@ -173,7 +173,7 @@ export const revealViewSchema = z.object({
   myAwardedScore: z.number().int().nullable(),
   myPenaltyApplied: z.boolean(),
   mySubmitted: z.boolean(),
-  rankerBreakdown: z.array(breakdownRowSchema).nullable(),
+  fullBreakdown: z.array(breakdownRowSchema).nullable(),
 });
 
 export const summarySchema = z.object({

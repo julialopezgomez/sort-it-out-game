@@ -1104,7 +1104,7 @@ begin
   perform public.submit_ranking(v_code, v_other2, v_rotated);
 
   v_state := public.get_game_state(v_code, v_tok);
-  v_breakdown := v_state -> 'reveal' -> 'rankerBreakdown';
+  v_breakdown := v_state -> 'reveal' -> 'fullBreakdown';
 
   assert jsonb_array_length(v_breakdown) = 5, 'Q: one breakdown row per card';
   assert (v_breakdown -> 0 ->> 'position')::int = 1, 'Q: rows are ordered by the Ranker''s position';
@@ -1123,12 +1123,13 @@ begin
     where (g ->> 'submitted')::boolean and not (g ->> 'correct')::boolean
   ), 'Q: the cyclic-shift guesser is shown as incorrect';
 
-  -- a Guesser must never receive this breakdown
+  -- with two eligible guessers, a Guesser now gets the identical, unfiltered table too
+  -- (their own column included, nobody excluded)
   v_state := public.get_game_state(v_code, v_other1);
-  assert v_state -> 'reveal' -> 'rankerBreakdown' = 'null'::jsonb,
-    'Q: a Guesser must not receive anyone''s per-card guesses';
+  assert v_state -> 'reveal' -> 'fullBreakdown' = v_breakdown,
+    'Q: with more than one Guesser, a Guesser sees the exact same breakdown as the Ranker';
 
-  raise notice 'TEST Q passed — Ranker-only per-card guess breakdown';
+  raise notice 'TEST Q passed — the full per-card guess breakdown';
 end $$;
 
 -- ===========================================================================
@@ -1163,7 +1164,7 @@ begin
   perform public.advance_game_if_needed(v_code, v_tok);
 
   v_state := public.get_game_state(v_code, v_tok);
-  v_first_card := v_state -> 'reveal' -> 'rankerBreakdown' -> 0;
+  v_first_card := v_state -> 'reveal' -> 'fullBreakdown' -> 0;
 
   assert jsonb_array_length(v_first_card -> 'guesses') = 2, 'R: both non-submitters appear';
   assert not exists (
@@ -1277,6 +1278,44 @@ begin
   assert v_err in ('NOT_RANKER', 'WRONG_PHASE'), format('S: only the current Ranker may repeat, got %s', v_err);
 
   raise notice 'TEST S passed — repeating a previous turn''s cards';
+end $$;
+
+-- ===========================================================================
+-- TEST T — the full breakdown is withheld from a lone Guesser (2 players), since
+--          myComparison already tells them everything it would; the Ranker still
+--          gets it regardless of player count
+-- ===========================================================================
+delete from public.rate_limits;
+
+do $$
+declare
+  v_code text;
+  v_tok text;
+  v_other text;
+  v_order text[];
+  v_state jsonb;
+begin
+  v_code := (public.create_room('t-alice', 'Alice', 'en', '{"totalCycles":1}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_code, 't-bob', 'Bob', 'en');
+  perform public.start_game(v_code, 't-alice');
+
+  v_tok := pg_temp.ranker_token(v_code);
+  v_other := case when v_tok = 't-alice' then 't-bob' else 't-alice' end;
+
+  perform public.accept_cards(v_code, v_tok);
+  v_order := pg_temp.turn_order(v_code);
+  perform public.submit_ranking(v_code, v_tok, v_order);
+  perform public.submit_ranking(v_code, v_other, v_order);
+
+  v_state := public.get_game_state(v_code, v_tok);
+  assert v_state -> 'reveal' -> 'fullBreakdown' is not null,
+    'T: the Ranker gets the full breakdown even with only one Guesser';
+
+  v_state := public.get_game_state(v_code, v_other);
+  assert v_state -> 'reveal' -> 'fullBreakdown' = 'null'::jsonb,
+    'T: a lone Guesser does not get the full breakdown — myComparison already covers it';
+
+  raise notice 'TEST T passed — the full breakdown needs more than one Guesser to earn its keep';
 end $$;
 
 rollback;
