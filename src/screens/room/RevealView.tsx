@@ -265,15 +265,30 @@ function PerPlayerTable({
 
 /**
  * The Ranker's view of every guess: one row per card, in the Ranker's own order, with one
- * column per guesser. The concept and the Ranker's position stay pinned on the left while
- * the guesser columns scroll, since a room can have up to 29 guessers.
+ * column per guesser. The concept stays pinned on the left; the Ranker's position and every
+ * guesser column scroll together, since the concepts are already listed in the Ranker's
+ * order, so the position column is redundant to pin.
+ *
+ * table-layout: fixed is what makes column widths exact, which is what lets the sticky
+ * column's right edge line up with no gap before the next one. It only works reliably,
+ * though, if the table's own width is also pinned to the exact sum of its columns — left at
+ * "auto", the browser resolves the table against its container instead of the declared
+ * column widths, and every column ends up narrower than requested (letting a sliver of the
+ * scrolling columns show through the sticky one). border-separate replaces the inherited
+ * border-collapse for the same reason: collapsed borders paint in a way that can leave a
+ * hairline seam right at a sticky column's edge while it is scrolling.
  */
-const CONCEPT_COL = 'sticky left-0 z-10 w-28 bg-surface sm:w-36';
-const POSITION_COL = 'sticky left-28 z-10 w-14 bg-surface sm:left-36';
+const CONCEPT_WIDTH = 128;
+const POSITION_WIDTH = 80;
+const GUESSER_WIDTH = 112;
+const CONCEPT_COL = 'sticky left-0 z-10 w-32 bg-surface';
+const POSITION_COL = 'w-20';
+const GUESSER_COL = 'w-28';
 
 function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
   const { t } = useTranslation();
   const guessers = rows[0]?.guesses ?? [];
+  const tableWidth = CONCEPT_WIDTH + POSITION_WIDTH + guessers.length * GUESSER_WIDTH;
 
   const totals = new Map<string, number>();
   for (const row of rows) {
@@ -287,7 +302,10 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
       <h2 className="text-lg">{t('reveal.allGuessesTitle')}</h2>
 
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full text-sm">
+        <table
+          className="table-fixed border-separate border-spacing-0 text-sm"
+          style={{ width: tableWidth }}
+        >
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-ink-faint">
               <th scope="col" className={`${CONCEPT_COL} py-1.5 pr-2 font-medium`}>
@@ -300,7 +318,7 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
                 <th
                   key={guesser.playerId}
                   scope="col"
-                  className="whitespace-nowrap px-3 py-1.5 text-center font-medium"
+                  className={`${GUESSER_COL} break-words px-3 py-1.5 text-center font-medium`}
                 >
                   {guesser.displayName}
                 </th>
@@ -315,7 +333,7 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
                   {row.position}
                 </td>
                 {row.guesses.map((guess) => (
-                  <td key={guess.playerId} className="px-3 py-2 text-center">
+                  <td key={guess.playerId} className={`${GUESSER_COL} px-3 py-2 text-center`}>
                     {!guess.submitted ? (
                       <span className="chip bg-line text-ink-soft">{t('reveal.noAnswer')}</span>
                     ) : (
@@ -340,7 +358,7 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
               </th>
               <td className={`${POSITION_COL} px-2 py-2`} />
               {guessers.map((guesser) => (
-                <td key={guesser.playerId} className="px-3 py-2 text-center">
+                <td key={guesser.playerId} className={`${GUESSER_COL} px-3 py-2 text-center`}>
                   <span className="tabular-nums font-semibold">
                     {t('reveal.correctOutOfFive', { correct: totals.get(guesser.playerId) ?? 0 })}
                   </span>
