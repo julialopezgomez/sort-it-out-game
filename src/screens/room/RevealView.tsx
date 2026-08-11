@@ -268,9 +268,19 @@ function PerPlayerTable({
  * column per guesser. The concept and the Ranker's position stay pinned on the left while
  * the guesser columns scroll, since a room can have up to 29 guessers.
  */
+const CONCEPT_COL = 'sticky left-0 z-10 w-28 bg-surface sm:w-36';
+const POSITION_COL = 'sticky left-28 z-10 w-14 bg-surface sm:left-36';
+
 function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
   const { t } = useTranslation();
   const guessers = rows[0]?.guesses ?? [];
+
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    for (const guess of row.guesses) {
+      if (guess.correct) totals.set(guess.playerId, (totals.get(guess.playerId) ?? 0) + 1);
+    }
+  }
 
   return (
     <section className="card overflow-hidden p-4">
@@ -280,10 +290,10 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-wide text-ink-faint">
-              <th scope="col" className="sticky left-0 z-10 bg-surface py-1.5 pr-2 font-medium">
+              <th scope="col" className={`${CONCEPT_COL} py-1.5 pr-2 font-medium`}>
                 {t('reveal.concept')}
               </th>
-              <th scope="col" className="px-2 py-1.5 text-center font-medium">
+              <th scope="col" className={`${POSITION_COL} px-2 py-1.5 text-center font-medium`}>
                 {t('reveal.yourRank')}
               </th>
               {guessers.map((guesser) => (
@@ -300,8 +310,10 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
           <tbody className="divide-y divide-line">
             {rows.map((row) => (
               <tr key={row.canonicalId}>
-                <td className="sticky left-0 z-10 bg-surface py-2 pr-2 break-words">{row.text}</td>
-                <td className="px-2 py-2 text-center tabular-nums">{row.position}</td>
+                <td className={`${CONCEPT_COL} py-2 pr-2 break-words`}>{row.text}</td>
+                <td className={`${POSITION_COL} px-2 py-2 text-center tabular-nums`}>
+                  {row.position}
+                </td>
                 {row.guesses.map((guess) => (
                   <td key={guess.playerId} className="px-3 py-2 text-center">
                     {!guess.submitted ? (
@@ -321,6 +333,21 @@ function BreakdownTable({ rows }: { rows: BreakdownRow[] }) {
               </tr>
             ))}
           </tbody>
+          <tfoot className="border-t border-line">
+            <tr>
+              <th scope="row" className={`${CONCEPT_COL} py-2 pr-2 text-left font-medium`}>
+                {t('leaderboard.total')}
+              </th>
+              <td className={`${POSITION_COL} px-2 py-2`} />
+              {guessers.map((guesser) => (
+                <td key={guesser.playerId} className="px-3 py-2 text-center">
+                  <span className="tabular-nums font-semibold">
+                    {t('reveal.correctOutOfFive', { correct: totals.get(guesser.playerId) ?? 0 })}
+                  </span>
+                </td>
+              ))}
+            </tr>
+          </tfoot>
         </table>
       </div>
     </section>

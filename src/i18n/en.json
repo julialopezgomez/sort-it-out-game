@@ -249,6 +249,7 @@
     "perPlayerTitle": "Points this turn",
     "allGuessesTitle": "How everyone guessed",
     "noAnswer": "No answer",
+    "correctOutOfFive": "{{correct}}/5",
     "skippedTitle": "That turn was skipped",
     "skippedBody": "{{name}} did not play their turn as Ranker, so there is nothing to score.",
     "advanceIn": "Next turn in {{seconds}}s",

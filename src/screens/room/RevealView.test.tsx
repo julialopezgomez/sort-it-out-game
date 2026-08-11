@@ -132,4 +132,13 @@ describe('ranker guess breakdown', () => {
 
     expect(screen.getByText('Sin respuesta')).toBeVisible();
   });
+
+  it('totals each guesser’s correct count in a footer row', () => {
+    render(<RevealView state={rankerState} roomCode="ABCDEF" refresh={vi.fn()} />);
+
+    expect(screen.getByRole('rowheader', { name: 'Total' })).toBeVisible();
+    // Ana was correct on both cards; Ben was wrong on one and never answered the other.
+    expect(screen.getByText('2/5')).toBeVisible();
+    expect(screen.getByText('0/5')).toBeVisible();
+  });
 });

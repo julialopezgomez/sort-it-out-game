@@ -249,6 +249,7 @@
     "perPlayerTitle": "Puntos de este turno",
     "allGuessesTitle": "Cómo ha adivinado cada persona",
     "noAnswer": "Sin respuesta",
+    "correctOutOfFive": "{{correct}}/5",
     "skippedTitle": "Ese turno se saltó",
     "skippedBody": "{{name}} no jugó su turno de ordenar, así que no hay nada que puntuar.",
     "advanceIn": "Siguiente turno en {{seconds}} s",
