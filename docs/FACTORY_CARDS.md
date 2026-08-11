@@ -20,6 +20,7 @@ a new migration file instead.
 
    Set `id` to `f-` followed by the English text, lowercased, with spaces and punctuation
    replaced by hyphens. Keep both `text_en` and `text_es` between 1 and 80 characters.
+
 3. Commit and push to `main`.
 
 ## Fix a translation
