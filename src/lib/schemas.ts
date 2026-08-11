@@ -294,6 +294,17 @@ export const dictionaryExportSchema = z.object({
   cards: z.array(z.object({ en: z.string().nullable(), es: z.string().nullable() })),
 });
 
+export const previousTurnCardSetSchema = z.object({
+  turnId: z.string(),
+  turnNumber: z.number().int(),
+  cycleNumber: z.number().int(),
+  rankerDisplayName: z.string(),
+  skipped: z.boolean(),
+  cards: z.array(cardViewSchema),
+});
+
+export const previousTurnCardSetListSchema = z.array(previousTurnCardSetSchema);
+
 export const heartbeatSchema = z.object({
   serverNow: z.string(),
   phase: phaseSchema,
@@ -318,3 +329,4 @@ export type GameSummary = z.infer<typeof summarySchema>;
 export type JoinResult = z.infer<typeof joinResultSchema>;
 export type CreateResult = z.infer<typeof createResultSchema>;
 export type ImportResult = z.infer<typeof importResultSchema>;
+export type PreviousTurnCardSet = z.infer<typeof previousTurnCardSetSchema>;

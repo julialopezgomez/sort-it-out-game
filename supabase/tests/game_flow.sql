@@ -1182,6 +1182,103 @@ begin
   raise notice 'TEST R passed — non-submitters show up honestly in the breakdown';
 end $$;
 
+-- ===========================================================================
+-- TEST S — repeating a previous turn's cards
+-- ===========================================================================
+delete from public.rate_limits;
+
+do $$
+declare
+  v_code text;
+  v_other_code text;
+  v_ranker1 text;
+  v_ranker2 text;
+  v_order1 text[];
+  v_turn1_id uuid;
+  v_turn2_id uuid;
+  v_list jsonb;
+  v_current text[];
+  v_err text;
+  v_foreign_turn uuid;
+begin
+  v_code := (public.create_room('t-alice', 'Alice', 'en', '{"totalCycles":2}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_code, 't-bob', 'Bob', 'en');
+  perform public.join_room(v_code, 't-carol', 'Carol', 'en');
+  perform public.start_game(v_code, 't-alice');
+
+  v_ranker1 := pg_temp.ranker_token(v_code);
+  select current_turn_id into v_turn1_id from public.games where room_code = v_code;
+
+  perform public.accept_cards(v_code, v_ranker1);
+  v_order1 := pg_temp.turn_order(v_code);
+  perform public.submit_ranking(v_code, v_ranker1, v_order1);
+  perform pg_temp.all_guessers_submit_exact(v_code);
+
+  update public.games set phase_deadline_at = now() - interval '1 second' where room_code = v_code;
+  perform public.advance_game_if_needed(v_code, 't-alice');
+
+  -- turn 2: the new Ranker can see turn 1's five cards, in the Ranker's own order
+  v_ranker2 := pg_temp.ranker_token(v_code);
+  select current_turn_id into v_turn2_id from public.games where room_code = v_code;
+
+  v_list := public.list_previous_turn_card_sets(v_code, v_ranker2);
+  assert jsonb_array_length(v_list) = 1, 'S: exactly one prior turn is listed';
+  assert (v_list -> 0 ->> 'turnId')::uuid = v_turn1_id, 'S: it is turn 1';
+  assert (v_list -> 0 ->> 'turnNumber')::int = 1, 'S: with the right turn number';
+  assert jsonb_array_length(v_list -> 0 -> 'cards') = 5, 'S: and its five cards';
+
+  -- the current turn itself must never appear in its own list
+  assert not exists (
+    select 1 from jsonb_array_elements(v_list) e where (e ->> 'turnId')::uuid = v_turn2_id
+  ), 'S: the in-progress turn is excluded from its own list';
+
+  perform public.repeat_previous_turn_cards(v_code, v_ranker2, v_turn1_id);
+
+  select array_agg(tc.canonical_id order by tc.slot) into v_current
+  from public.games g join public.turn_cards tc on tc.turn_id = g.current_turn_id
+  where g.room_code = v_code;
+  assert v_current = v_order1, 'S: the current turn now has turn 1''s exact five cards';
+
+  -- turn 1's own cards are untouched
+  assert (
+    select array_agg(tc.canonical_id order by tc.slot) from public.turn_cards tc
+    where tc.turn_id = v_turn1_id
+  ) = v_order1, 'S: repeating never mutates the source turn';
+
+  -- a modified client cannot repeat a turn from a different game
+  v_other_code := (public.create_room('t-dave', 'Dave', 'en', '{}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_other_code, 't-erin', 'Erin', 'en');
+  perform public.start_game(v_other_code, 't-dave');
+  select current_turn_id into v_foreign_turn from public.games where room_code = v_other_code;
+
+  v_err := null;
+  begin
+    perform public.repeat_previous_turn_cards(v_code, v_ranker2, v_foreign_turn);
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'CARD_NOT_FOUND', format('S: a foreign-game turn is rejected, got %s', v_err);
+
+  -- and cannot repeat the current turn onto itself
+  v_err := null;
+  begin
+    perform public.repeat_previous_turn_cards(v_code, v_ranker2, v_turn2_id);
+  exception when others then v_err := sqlerrm; end;
+  assert v_err = 'CARD_NOT_FOUND', format('S: repeating the current turn itself is rejected, got %s', v_err);
+
+  -- only the Ranker of the CURRENT turn may do this
+  v_err := null;
+  begin
+    perform public.repeat_previous_turn_cards(v_code, (
+      select 't-' || lower(p.display_name) from public.players p
+      where p.game_id = (select id from public.games where room_code = v_code)
+        and p.id <> (select ranker_player_id from public.game_turns where id = v_turn2_id)
+      limit 1
+    ), v_turn1_id);
+  exception when others then v_err := sqlerrm; end;
+  assert v_err in ('NOT_RANKER', 'WRONG_PHASE'), format('S: only the current Ranker may repeat, got %s', v_err);
+
+  raise notice 'TEST S passed — repeating a previous turn''s cards';
+end $$;
+
 rollback;
 
 \echo ''

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardText } from '../../components/CardText';
 import { Dialog, ConfirmDialog } from '../../components/Dialog';
@@ -10,6 +10,7 @@ import { toGameError, type GameError } from '../../lib/errors';
 import { canRedrawCustomOnly } from '../../lib/sampling';
 import { cardMatchesQuery, cardSortKey } from '../../lib/cards';
 import { CARD_TEXT_MAX_LENGTH } from '../../lib/types';
+import type { PreviousTurnCardSet } from '../../lib/schemas';
 import type { RoomViewProps } from './shared';
 
 /**
@@ -29,6 +30,7 @@ export function PrepareView({ state, roomCode, refresh }: RoomViewProps) {
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
   const [manualSlot, setManualSlot] = useState<number | null>(null);
   const [confirmSkip, setConfirmSkip] = useState(false);
+  const [repeatOpen, setRepeatOpen] = useState(false);
 
   const cards = state.turn?.cards ?? [];
   const customCards = useMemo(() => state.customCards ?? [], [state.customCards]);
@@ -157,6 +159,14 @@ export function PrepareView({ state, roomCode, refresh }: RoomViewProps) {
         >
           {t('prepare.redrawCustomOnly')}
         </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          disabled={busy}
+          onClick={() => setRepeatOpen(true)}
+        >
+          {t('prepare.repeatPrevious')}
+        </button>
       </section>
 
       {!customOnlyAvailable && (
@@ -188,6 +198,16 @@ export function PrepareView({ state, roomCode, refresh }: RoomViewProps) {
           const slot = pickerSlot;
           setPickerSlot(null);
           if (slot !== null) void run(() => rpc.chooseCustomCard(roomCode, slot, cardId));
+        }}
+      />
+
+      <RepeatPreviousTurnDialog
+        open={repeatOpen}
+        roomCode={roomCode}
+        onClose={() => setRepeatOpen(false)}
+        onPick={(turnId) => {
+          setRepeatOpen(false);
+          void run(() => rpc.repeatPreviousTurnCards(roomCode, turnId));
         }}
       />
 
@@ -279,6 +299,99 @@ function CustomCardPicker({
         </ul>
       )}
     </Dialog>
+  );
+}
+
+/**
+ * Fetched fresh each time it opens rather than kept in the already-loaded room state:
+ * this is only ever needed for the few seconds someone is actually browsing past turns,
+ * so there is no reason to pay for it on every render of card preparation.
+ */
+function RepeatPreviousTurnDialog({
+  open,
+  roomCode,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  roomCode: string;
+  onClose: () => void;
+  onPick: (turnId: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [turns, setTurns] = useState<PreviousTurnCardSet[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setTurns(null);
+      setFailed(false);
+      return;
+    }
+    rpc
+      .listPreviousTurnCardSets(roomCode)
+      .then(setTurns)
+      .catch(() => setFailed(true));
+  }, [open, roomCode]);
+
+  return (
+    <Dialog open={open} title={t('prepare.repeatPreviousTitle')} onClose={onClose}>
+      <p className="help">{t('prepare.repeatPreviousIntro')}</p>
+
+      {failed && <p className="mt-3 text-sm text-coral-700">{t('errors.UNKNOWN')}</p>}
+
+      {!failed && turns === null && (
+        <p className="mt-3 text-sm text-ink-soft">{t('common.loading')}</p>
+      )}
+
+      {!failed && turns !== null && <PreviousTurnList turns={turns} onPick={onPick} />}
+    </Dialog>
+  );
+}
+
+function PreviousTurnList({
+  turns,
+  onPick,
+}: {
+  turns: PreviousTurnCardSet[];
+  onPick: (turnId: string) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (turns.length === 0) {
+    return <p className="mt-3 text-sm text-ink-soft">{t('prepare.repeatPreviousDisabled')}</p>;
+  }
+
+  return (
+    <ul className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+      {turns.map((turn) => (
+        <li key={turn.turnId} className="card p-3">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 text-sm font-medium">
+              {t('prepare.repeatPreviousTurnLabel', {
+                turn: turn.turnNumber,
+                name: turn.rankerDisplayName,
+              })}
+              {turn.skipped && (
+                <span className="chip ml-2 bg-line text-ink-soft">
+                  {t('prepare.repeatPreviousSkippedTag')}
+                </span>
+              )}
+            </p>
+            <button
+              type="button"
+              className="btn-secondary btn-sm shrink-0"
+              onClick={() => onPick(turn.turnId)}
+            >
+              {t('prepare.repeatPreviousUse')}
+            </button>
+          </div>
+          <p className="mt-1 break-words text-sm text-ink-soft">
+            {turn.cards.map((card) => card.text).join(' · ')}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 

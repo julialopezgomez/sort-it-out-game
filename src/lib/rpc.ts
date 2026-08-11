@@ -14,6 +14,7 @@ import {
   importResultSchema,
   joinResultSchema,
   orderSchema,
+  previousTurnCardSetListSchema,
   settingsSchema,
   summarySchema,
   type CreateResult,
@@ -21,6 +22,7 @@ import {
   type GameSummary,
   type ImportResult,
   type JoinResult,
+  type PreviousTurnCardSet,
 } from './schemas';
 import type { GameSettings, Language } from './types';
 
@@ -225,6 +227,26 @@ export async function acceptCards(roomCode: string) {
   return call(
     'accept_cards',
     { p_room_code: room(roomCode), p_session_token: getSessionToken() },
+    okSchema,
+  );
+}
+
+export async function listPreviousTurnCardSets(roomCode: string): Promise<PreviousTurnCardSet[]> {
+  return call(
+    'list_previous_turn_card_sets',
+    { p_room_code: room(roomCode), p_session_token: getSessionToken() },
+    previousTurnCardSetListSchema,
+  );
+}
+
+export async function repeatPreviousTurnCards(roomCode: string, sourceTurnId: string) {
+  return call(
+    'repeat_previous_turn_cards',
+    {
+      p_room_code: room(roomCode),
+      p_session_token: getSessionToken(),
+      p_source_turn_id: sourceTurnId,
+    },
     okSchema,
   );
 }
