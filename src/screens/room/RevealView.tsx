@@ -75,6 +75,7 @@ export function RevealView({ state, roomCode, refresh, offset }: RoomViewProps) 
 
           {!state.turn?.iAmRanker && reveal.myComparison && (
             <ComparisonTable
+              rankerDisplayName={reveal.rankerDisplayName}
               rows={reveal.myComparison}
               rawScore={reveal.myRawScore}
               awardedScore={reveal.myAwardedScore}
@@ -128,12 +129,14 @@ export function RevealView({ state, roomCode, refresh, offset }: RoomViewProps) 
 }
 
 function ComparisonTable({
+  rankerDisplayName,
   rows,
   rawScore,
   awardedScore,
   penaltyApplied,
   submitted,
 }: {
+  rankerDisplayName: string;
   rows: {
     canonicalId: string;
     text: string | null;
@@ -171,7 +174,7 @@ function ComparisonTable({
                 {t('reveal.yourRank')}
               </th>
               <th scope="col" className="px-2 py-1.5 text-center font-medium">
-                {t('reveal.rankerRank')}
+                {t('reveal.rankerRank', { name: rankerDisplayName })}
               </th>
               <th scope="col" className="py-1.5 pl-2 text-right font-medium">
                 {t('reveal.result')}
