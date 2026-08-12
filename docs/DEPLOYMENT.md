@@ -4,17 +4,26 @@ The recommended setup uses [Supabase's GitHub integration](https://supabase.com/
 It deploys the database migrations committed in this repository, so the Supabase CLI does not
 need to be installed locally.
 
+Every `YOUR_...` placeholder below is a stand-in for your own value: your GitHub account,
+your repository name, your Supabase project. This guide is not tied to any one account.
+
+> **This repository's own deployment**, for reference only: GitHub
+> `julialopezgomez/sort-it-out-game`, published at
+> `https://julialopezgomez.github.io/sort-it-out-game/`. That is one real, already-taken
+> example, not a template. Deploying your own copy needs your own GitHub account and your
+> own Supabase project, not this one.
+
 ## 1. Create the Supabase project
 
 On Supabase's **Create a new project** screen, use these settings:
 
 | Setting                         | Choose                                                               |
 | ------------------------------- | -------------------------------------------------------------------- |
-| Organization                    | `julialopezgomez` (Free)                                             |
-| GitHub repository               | `julialopezgomez/sort-it-out-game`                                   |
-| Project name                    | `sort-it-out-game`                                                   |
+| Organization                    | Your own GitHub-linked organization or personal account (Free)       |
+| GitHub repository               | `YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME`                          |
+| Project name                    | Your repository name, or anything you prefer                         |
 | Database password               | Keep the generated strong password and save it in a password manager |
-| Region                          | Europe, or the European region closest to the expected players       |
+| Region                          | Europe, or the region closest to your expected players               |
 | Enable Data API                 | On                                                                   |
 | Automatically expose new tables | Off                                                                  |
 | Enable automatic RLS            | On                                                                   |
@@ -44,7 +53,7 @@ placed in this repository, GitHub Actions, `.env`, or any `VITE_` variable.
 
 ## 3. Configure the GitHub repository
 
-In `julialopezgomez/sort-it-out-game`:
+In `YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME`:
 
 1. Open **Settings → Secrets and variables → Actions → Variables**.
 2. Add `VITE_SUPABASE_URL` with the Supabase project URL.
@@ -90,13 +99,13 @@ be fully usable once both have succeeded.
 The site will be available at:
 
 ```text
-https://julialopezgomez.github.io/sort-it-out-game/
+https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPOSITORY_NAME/
 ```
 
 Room links use hash routing, such as:
 
 ```text
-https://julialopezgomez.github.io/sort-it-out-game/#/join/ABCDEF
+https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPOSITORY_NAME/#/join/ABCDEF
 ```
 
 ## 5. Confirm the database deployment
@@ -131,8 +140,9 @@ truth. Avoid making schema changes manually in the production dashboard.
 ## Custom domain later
 
 If the game receives its own custom domain, change `VITE_BASE_PATH` in
-`.github/workflows/deploy-pages.yml` from `/sort-it-out-game/` to `/`, then configure the custom
-domain in **Settings → Pages**. No router changes are needed.
+`.github/workflows/deploy-pages.yml` from your repository's path (`/YOUR_REPOSITORY_NAME/` by
+default) to `/`, then configure the custom domain in **Settings → Pages**. No router changes
+are needed.
 
 ## Supabase Free pauses
 

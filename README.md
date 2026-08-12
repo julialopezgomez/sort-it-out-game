@@ -1,8 +1,9 @@
 # Sort It Out
 
-Sort It Out is a free bilingual party game for 2–30 players. One Ranker privately orders
-five unrelated concepts; everyone else tries to reproduce that exact order. The app supports
-English and Spanish independently for every player.
+A free, bilingual (English/Spanish) party game for 2–30 players. One Ranker privately orders
+five unrelated concepts; everyone else tries to guess that exact order.
+
+**Play now: <https://julialopezgomez.github.io/sort-it-out-game/>**
 
 The production architecture is deliberately small and free to operate:
 
@@ -34,18 +35,24 @@ pnpm verify
 
 See [Testing](docs/TESTING.md) for database and browser integration tests.
 
-## Deploying this repository
+## Deploying your own copy
 
-This repository is a GitHub project site. For the repository
-`julialopezgomez/sort-it-out-game`, its default URL is:
+Fork or clone this repository and push it to your own GitHub account. It becomes a GitHub
+Pages project site at:
 
 ```text
-https://julialopezgomez.github.io/sort-it-out-game/
+https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPOSITORY_NAME/
 ```
 
-It is independent of the owner site at `https://julialopezgomez.github.io/`. Read the
-[deployment guide](docs/DEPLOYMENT.md) for the exact Supabase project choices, the recommended
-no-CLI GitHub integration, repository variables, first push, and GitHub Pages switch.
+Read the [deployment guide](docs/DEPLOYMENT.md) for the exact Supabase project choices, the
+recommended no-CLI GitHub integration, repository variables, first push, and GitHub Pages
+switch. Every `YOUR_...` placeholder there needs your own values; the guide is not tied to any
+particular account.
+
+> **This repository's own deployment**, for reference: it lives at
+> `julialopezgomez/sort-it-out-game`, published at the link above. Those are this instance's
+> real values, not a template to copy. Use your own account and repository name when
+> following the guide.
 
 ## Free-tier maintenance
 
