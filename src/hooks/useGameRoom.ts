@@ -171,26 +171,48 @@ export function useGameRoom(roomCode: string | null): RoomConnection {
 
   // ---------------------------------------------------------------- advance loop
   useEffect(() => {
-    if (!roomCode || !state || !isSupabaseConfigured) return;
+    if (!roomCode || !stateRef.current || !isSupabaseConfigured) return;
 
-    const delay = nextAdvanceDelay(state);
-    if (delay === null) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const timer = setTimeout(() => {
-      void (async () => {
-        try {
-          await rpc.advanceGameIfNeeded(roomCode);
-        } catch {
-          // A failed advance is not worth interrupting anyone: another client will try,
-          // and the next refetch tells us where the game really is.
-        } finally {
-          void refresh();
-        }
-      })();
-    }, delay);
+    const schedule = () => {
+      if (cancelled) return;
 
-    return () => clearTimeout(timer);
-  }, [roomCode, state, refresh]);
+      const latest = stateRef.current;
+      if (!latest) return;
+
+      const delay = nextAdvanceDelay(latest);
+      if (delay === null) return;
+
+      timer = setTimeout(() => {
+        void (async () => {
+          try {
+            await rpc.advanceGameIfNeeded(roomCode);
+          } catch {
+            // A transient failure must not strand everyone on an expired phase. The
+            // retry below keeps nudging until either this client or another one moves it.
+          }
+
+          try {
+            await refresh();
+          } catch {
+            // refresh normally records its own error, but the scheduler must keep running
+            // even when both requests fail during a brief loss of connectivity.
+          }
+
+          schedule();
+        })();
+      }, delay);
+    };
+
+    schedule();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [roomCode, state?.game.phase, state?.game.deadlineAt, state?.game.pauseReason, refresh]);
 
   // ---------------------------------------------------------------- window events
   useEffect(() => {
