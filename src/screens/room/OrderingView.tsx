@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OrderableList } from '../../components/OrderableList';
+import { useCountdown } from '../../hooks/useCountdown';
 import { ErrorBanner } from '../../components/Feedback';
 import { ConfirmDialog } from '../../components/Dialog';
 import { HostControls } from './HostControls';
@@ -16,12 +17,13 @@ const PERSIST_DEBOUNCE_MS = 700;
 /**
  * Private ordering, for the Ranker and for a Guesser.
  *
- * The difference between the two roles is small but important:
+ * Both roles start from a sequence that is already a valid order and both save drafts as
+ * they go, so running out of time submits whatever the player last had rather than
+ * nothing. The difference is only in the wording: a Guesser is scored against the Ranker's
+ * order, so pressing submit early is still worth doing.
  *
- *  - The Ranker's starting sequence is already a valid order, and drafts are saved as they
- *    go, so a timeout submits whatever they last had rather than nothing.
- *  - A Guesser must press submit. Missing the deadline scores 0 for that turn — and the
- *    turn still counts in their average, which is why the screen says so up front.
+ * When the clock reaches zero this screen locks itself and waits. It never decides that a
+ * submission is late — advance_game_if_needed in Postgres does that.
  */
 export function OrderingView({
   state,
@@ -41,6 +43,9 @@ export function OrderingView({
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localEdit = useRef(false);
   const turnId = turn?.turnId ?? null;
+
+  const remaining = useCountdown(state.game.deadlineAt, offset ?? null);
+  const timeUp = remaining === 0;
 
   // Adopt the server's order on a new turn, or when a refetch brings a newer draft than we
   // have locally (for instance after reconnecting on another device).
@@ -70,6 +75,18 @@ export function OrderingView({
     },
     [],
   );
+
+  // A drag in the last moments must not be lost to the debounce: when the clock runs out,
+  // send the current order straight away so the order the server auto-submits is the one
+  // on screen.
+  useEffect(() => {
+    if (!timeUp) return;
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    if (!localEdit.current) return;
+    void rpc.persistRanking(roomCode, order).catch(() => undefined);
+    // Only the transition to zero matters; `order` is read, not watched.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp, roomCode]);
 
   const handleChange = (next: string[]) => {
     localEdit.current = true;
@@ -114,6 +131,15 @@ export function OrderingView({
 
       {error && <ErrorBanner error={error} onDismiss={() => setError(null)} />}
 
+      {timeUp && (
+        <p
+          role="status"
+          className="rounded-xl bg-coral-50 px-3 py-2 text-sm font-medium text-coral-700"
+        >
+          {t('order.timeUpBanner')}
+        </p>
+      )}
+
       {/* A player carrying a skip penalty deserves to know before they invest effort. */}
       {!isRanker && state.me.pendingPenalties > 0 && (
         <p className="rounded-xl bg-coral-50 px-3 py-2 text-sm text-coral-700">
@@ -121,21 +147,19 @@ export function OrderingView({
         </p>
       )}
 
-      <OrderableList items={cards} onChange={handleChange} disabled={busy} />
+      <OrderableList items={cards} onChange={handleChange} disabled={busy || timeUp} />
 
       <section className="space-y-2">
         <button
           type="button"
           className="btn-primary w-full sm:w-auto"
-          disabled={busy}
+          disabled={busy || timeUp}
           onClick={() => void submit()}
         >
           {busy ? t('order.submitting') : t('order.submit')}
         </button>
         <p className="help">{t('order.autoSaveHint')}</p>
-        <p className="help">
-          {isRanker ? t('order.rankerAutoSubmitHint') : t('order.guesserMustSubmitHint')}
-        </p>
+        <p className="help">{t('order.autoSubmitHint')}</p>
       </section>
 
       {isRanker && (
@@ -143,7 +167,7 @@ export function OrderingView({
           <button
             type="button"
             className="btn-quiet btn-sm"
-            disabled={busy}
+            disabled={busy || timeUp}
             onClick={() => setConfirmSkip(true)}
           >
             {t('prepare.skipMyTurn')}

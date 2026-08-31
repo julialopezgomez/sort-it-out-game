@@ -5,6 +5,7 @@ import {
   formatDuration,
   formatLimit,
   isUrgent,
+  parseServerTime,
   pausedRemainingMs,
   remainingMs,
   remainingSeconds,
@@ -22,6 +23,29 @@ describe('server clock, not browser clock', () => {
 
   it('falls back to no offset when the server timestamp is unreadable', () => {
     expect(computeClockOffset('not a date', 1000).offsetMs).toBe(0);
+  });
+
+  it('reads the whole-hour offset Postgres actually sends', () => {
+    // to_char(now(), '...OF') writes a whole-hour offset as +00, which Date.parse alone
+    // rejects. Getting this wrong left every timed phase without a scheduled check.
+    expect(parseServerTime('2026-01-01T12:00:00.000+00')).toBe(
+      Date.parse('2026-01-01T12:00:00.000Z'),
+    );
+    expect(parseServerTime('2026-01-01T14:00:00.000+02')).toBe(
+      Date.parse('2026-01-01T12:00:00.000Z'),
+    );
+    expect(parseServerTime('2026-01-01T17:30:00.000+05:30')).toBe(
+      Date.parse('2026-01-01T12:00:00.000Z'),
+    );
+    expect(parseServerTime('nonsense')).toBeNull();
+    expect(parseServerTime(null)).toBeNull();
+  });
+
+  it('counts down from a deadline written in that same shape', () => {
+    const local = Date.parse('2026-01-01T12:00:00.000Z');
+    const offset = computeClockOffset('2026-01-01T12:00:00.000+00', local);
+    expect(offset.offsetMs).toBe(0);
+    expect(remainingMs('2026-01-01T12:00:30.000+00', offset, local)).toBe(30_000);
   });
 
   it('shows a correct countdown even on a badly wrong local clock', () => {

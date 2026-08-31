@@ -14,9 +14,27 @@ export type ClockOffset = {
   measuredAt: number;
 };
 
+/**
+ * Parse a timestamp the database produced, in milliseconds, or null if it cannot be read.
+ *
+ * Postgres writes a whole-hour UTC offset as `+00` (and `+02`, `-07`), which `Date.parse`
+ * rejects outright — `serverNow` is built with to_char and arrives in exactly that shape.
+ * Padding the offset to `+00:00` makes it a string every browser understands.
+ */
+export function parseServerTime(iso: string | null): number | null {
+  if (!iso) return null;
+
+  const direct = Date.parse(iso);
+  if (!Number.isNaN(direct)) return direct;
+
+  const padded = iso.replace(/([+-]\d{2})$/, '$1:00');
+  const parsed = Date.parse(padded);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export function computeClockOffset(serverNowIso: string, localNowMs = Date.now()): ClockOffset {
-  const serverMs = Date.parse(serverNowIso);
-  if (Number.isNaN(serverMs)) {
+  const serverMs = parseServerTime(serverNowIso);
+  if (serverMs === null) {
     return { offsetMs: 0, measuredAt: localNowMs };
   }
   return { offsetMs: serverMs - localNowMs, measuredAt: localNowMs };
@@ -36,9 +54,8 @@ export function remainingMs(
   offset: ClockOffset | null,
   localNowMs = Date.now(),
 ): number | null {
-  if (!deadlineIso) return null;
-  const deadlineMs = Date.parse(deadlineIso);
-  if (Number.isNaN(deadlineMs)) return null;
+  const deadlineMs = parseServerTime(deadlineIso);
+  if (deadlineMs === null) return null;
   return Math.max(0, deadlineMs - serverNow(offset, localNowMs));
 }
 

@@ -3,7 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { getSupabase, isSupabaseConfigured } from '../lib/supabase';
 import * as rpc from '../lib/rpc';
 import { GameError, toGameError } from '../lib/errors';
-import { computeClockOffset, type ClockOffset } from '../lib/time';
+import { computeClockOffset, parseServerTime, type ClockOffset } from '../lib/time';
 import type { GameStateView } from '../lib/schemas';
 import { HEARTBEAT_INTERVAL_MS } from '../lib/types';
 
@@ -41,6 +41,9 @@ const PREPARING_POLL_MS = 8_000;
 const PAUSED_POLL_MS = 5_000;
 const DEADLINE_GRACE_MS = 700;
 const MAX_POLL_MS = 15_000;
+// An expired phase that is still expired: keep nudging, but slowly enough to stay well
+// inside the server's rate limit for this player.
+const EXPIRED_RETRY_MS = 1_000;
 
 export function useGameRoom(roomCode: string | null): RoomConnection {
   const [state, setState] = useState<GameStateView | null>(null);
@@ -255,14 +258,15 @@ export function nextAdvanceDelay(state: GameStateView, nowMs = Date.now()): numb
   // Card preparation is untimed, but the Ranker might vanish during it.
   if (phase === 'preparing_cards') return PREPARING_POLL_MS;
 
-  if (deadlineAt) {
-    const serverNowMs = Date.parse(state.serverNow);
-    const deadlineMs = Date.parse(deadlineAt);
-    if (!Number.isNaN(serverNowMs) && !Number.isNaN(deadlineMs)) {
-      // Local elapsed time since the snapshot, so a wrong browser clock cannot skew this.
-      const untilDeadline = deadlineMs - serverNowMs;
-      return Math.min(MAX_POLL_MS, Math.max(500, untilDeadline + DEADLINE_GRACE_MS));
-    }
+  const deadlineMs = parseServerTime(deadlineAt);
+  if (deadlineMs !== null) {
+    // Measured against the server's own clock, so a wrong browser clock cannot skew this.
+    // If that timestamp is ever unreadable we still schedule a check off the local clock:
+    // an unparseable string must never be the reason a timed phase stops advancing.
+    const serverNowMs = parseServerTime(state.serverNow) ?? nowMs;
+    const untilDeadline = deadlineMs - serverNowMs;
+    if (untilDeadline > 0) return Math.min(MAX_POLL_MS, untilDeadline + DEADLINE_GRACE_MS);
+    return EXPIRED_RETRY_MS;
   }
 
   // Unlimited ordering phase: nothing to expire. The Ranker being away is handled above,
@@ -272,6 +276,5 @@ export function nextAdvanceDelay(state: GameStateView, nowMs = Date.now()): numb
   }
 
   if (phase === 'next_turn') return 500;
-  void nowMs;
   return null;
 }

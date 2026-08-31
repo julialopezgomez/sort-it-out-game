@@ -1133,8 +1133,8 @@ begin
 end $$;
 
 -- ===========================================================================
--- TEST R — a non-submitter appears in the Ranker's breakdown as not submitted,
---          never as a wrong guess with a fabricated position
+-- TEST R — a Guesser who never touched the screen is auto-submitted at the
+--          deadline, with the layout they were dealt, and scores nothing
 -- ===========================================================================
 delete from public.rate_limits;
 
@@ -1166,21 +1166,32 @@ begin
   v_state := public.get_game_state(v_code, v_tok);
   v_first_card := v_state -> 'reveal' -> 'fullBreakdown' -> 0;
 
-  assert jsonb_array_length(v_first_card -> 'guesses') = 2, 'R: both non-submitters appear';
+  assert jsonb_array_length(v_first_card -> 'guesses') = 2, 'R: both Guessers appear';
   assert not exists (
     select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
-    where (g ->> 'submitted')::boolean
-  ), 'R: nobody submitted, so nobody is marked submitted';
+    where not (g ->> 'submitted')::boolean
+  ), 'R: an elapsed deadline submits the layout every Guesser had on screen';
   assert not exists (
     select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
-    where g -> 'position' <> 'null'::jsonb
-  ), 'R: a non-submitter never gets a fabricated guessed position';
-  assert not exists (
-    select 1 from jsonb_array_elements(v_first_card -> 'guesses') g
-    where (g ->> 'correct')::boolean
-  ), 'R: a non-submitter is never shown as correct';
+    where g -> 'position' = 'null'::jsonb
+  ), 'R: an auto-submitted guess has a real position';
 
-  raise notice 'TEST R passed — non-submitters show up honestly in the breakdown';
+  -- The seeded layout shares no position with the Ranker's order, so a player who did
+  -- nothing at all cannot back into points.
+  assert not exists (
+    select 1 from jsonb_array_elements(v_state -> 'reveal' -> 'fullBreakdown') card,
+                  jsonb_array_elements(card -> 'guesses') g
+    where (g ->> 'correct')::boolean
+  ), 'R: an untouched dealt layout never matches the Ranker';
+
+  assert not exists (
+    select 1 from public.rankings r
+    join public.game_turns t on t.id = r.turn_id
+    where t.game_id = v_g.id and r.role = 'guesser'
+      and (r.awarded_score <> 0 or not r.auto_submitted)
+  ), 'R: an untouched auto-submitted guess is marked as such and scores 0';
+
+  raise notice 'TEST R passed — an untimely Guesser is auto-submitted and scores 0';
 end $$;
 
 -- ===========================================================================
@@ -1316,6 +1327,88 @@ begin
     'T: a lone Guesser does not get the full breakdown — myComparison already covers it';
 
   raise notice 'TEST T passed — the full breakdown needs more than one Guesser to earn its keep';
+end $$;
+
+-- ===========================================================================
+-- TEST U — an expired Guesser deadline submits the draft on screen, and the
+--          layout a Guesser is dealt never shares a position with the Ranker's
+-- ===========================================================================
+delete from public.rate_limits;
+
+do $$
+declare
+  v_code text;
+  v_tok text;
+  v_order text[];
+  v_seeded text[];
+  v_draft text[];
+  v_g public.games;
+  v_turn_id uuid;
+  v_bob public.players;
+  v_state jsonb;
+begin
+  v_code := (public.create_room('t-alice', 'Alice', 'en',
+    '{"totalCycles":1,"guesserSeconds":60}'::jsonb) ->> 'roomCode');
+  perform public.join_room(v_code, 't-bob', 'Bob', 'en');
+  perform public.join_room(v_code, 't-carol', 'Carol', 'en');
+  perform public.start_game(v_code, 't-alice');
+
+  v_tok := pg_temp.ranker_token(v_code);
+  perform public.accept_cards(v_code, v_tok);
+  v_order := pg_temp.turn_order(v_code);
+  perform public.submit_ranking(v_code, v_tok, v_order);
+
+  select * into v_g from public.games where room_code = v_code;
+  v_turn_id := v_g.current_turn_id;
+
+  -- every Guesser starts from a layout that shares no position with the Ranker's order
+  for v_seeded in
+    select array_agg(tc.canonical_id order by ri.position)
+    from public.rankings r
+    join public.ranking_items ri on ri.ranking_id = r.id
+    join public.turn_cards tc on tc.id = ri.turn_card_id
+    where r.turn_id = v_turn_id and r.role = 'guesser'
+    group by r.id
+  loop
+    assert array_length(v_seeded, 1) = 5, 'U: a Guesser is dealt all five';
+    assert not exists (
+      select 1 from generate_subscripts(v_seeded, 1) i where v_seeded[i] = v_order[i]
+    ), 'U: a dealt Guesser layout never repeats the Ranker''s position for a card';
+  end loop;
+
+  -- one Guesser drags their cards into the Ranker's order but never presses submit
+  select p.* into v_bob from public.players p
+  where p.game_id = v_g.id and p.display_name = 'Bob';
+
+  if v_bob.id = (select ranker_player_id from public.game_turns where id = v_turn_id) then
+    select p.* into v_bob from public.players p
+    where p.game_id = v_g.id and p.display_name = 'Carol';
+  end if;
+
+  perform public.persist_ranking(v_code, 't-' || lower(v_bob.display_name), v_order);
+
+  update public.games set phase_deadline_at = now() - interval '1 second' where id = v_g.id;
+  perform public.advance_game_if_needed(v_code, v_tok);
+
+  assert pg_temp.phase(v_code) = 'reveal', 'U: an elapsed Guesser deadline reveals';
+
+  select array_agg(tc.canonical_id order by ri.position) into v_draft
+  from public.rankings r
+  join public.ranking_items ri on ri.ranking_id = r.id
+  join public.turn_cards tc on tc.id = ri.turn_card_id
+  where r.turn_id = v_turn_id and r.player_id = v_bob.id;
+
+  assert v_draft = v_order, 'U: the saved draft is what gets submitted';
+
+  select * into v_bob from public.players where id = v_bob.id;
+  assert v_bob.total_score = 5,
+    format('U: a perfect draft scores 5 even unsubmitted, got %s', v_bob.total_score);
+
+  v_state := public.get_game_state(v_code, 't-' || lower(v_bob.display_name));
+  assert (v_state -> 'reveal' ->> 'mySubmitted')::boolean,
+    'U: the reveal shows the auto-submitted guess as an answer, not a blank';
+
+  raise notice 'TEST U passed — a timeout submits the draft on screen';
 end $$;
 
 rollback;
